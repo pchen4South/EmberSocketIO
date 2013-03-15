@@ -1,0 +1,10 @@
+#mainarea{
+  height: 1000px;
+  width: 1000px;
+  background-color: #e0e0e0;
+}
+
+.box{
+  border: 1px solid black;
+  background: blue;
+}

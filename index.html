@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script type="text/javascript" src = "/js/libs/jquery.js">       </script>
+    <script type="text/javascript" src = "/js/libs/handlebars.js">   </script>
+    <script type="text/javascript" src = "/js/libs/ember.js">        </script>
+    <script type="text/javascript" src = "/js/libs/ember-data.js">   </script>
+    <script type="text/javascript" src="/socket.io/lib/socket.io.js"></script>
+    <script type="text/javascript" src="emberApp.js"></script>
+    <LINK href="/css/app.css" rel="stylesheet" type="text/css">
+  </head>
+  <body>
+
+  <script type="text/x-handlebars" data-template-name="box">
+    {{view.content.text}}
+  </script> 
+  
+  
+  <script type="text/x-handlebars" data-template-name="boxs">
+    <section id = "mainarea">
+      {{#each box in controller}}
+        {{view 'App.BoxView' contentBinding = 'box'}}
+      {{/each}}
+    </section>
+  </script> 
+  
+  
+  
+  </body>
+</html>
