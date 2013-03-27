@@ -148,6 +148,7 @@ DS.SocketAdapter = DS.RESTAdapter.extend({
     }
     if (request.ids !== void 0) {
       data.ids = request.ids;
+      s;
     }
     return this.socket.emit("ember-data", data);
   },
