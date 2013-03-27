@@ -30,10 +30,7 @@
   #
   #    Socket.IO server implementation *
   #  
-  
-  ###
-  Socket.IO server implementation *
-  ###
+
   io = require("socket.io").listen(server)
   TYPES =
     CREATE: "CREATE"
@@ -53,11 +50,6 @@
 
     results = []
     
-    ###
-    We extract the functions used in the for loop below
-    into functionArray for optimization purposes.
-    This also makes it pass JSHint
-    ###
     functionArray =
       CREATE: (callback) ->
         models[capitalize(data.type)].create data.record, (err, newModel) ->
@@ -77,7 +69,13 @@
         models[capitalize(data.type)].findOneAndRemove
           _id: data.record.id
         , callback
-
+      
+      FIND_MANY: (callback) ->
+        console.log "not working yet"
+        # queryArray = [] 
+        # for id in data.ids
+          # models[capitalize(data.type)].find {id:id},callback
+      
       FIND_ALL: (callback) ->
         models[capitalize(data.type)].find {}, callback
 
@@ -94,7 +92,9 @@
       when TYPES.DELETE
         results.push functionArray.DELETE
       when TYPES.FIND_ALL
-        results.push functionArray.FIND_ALL
+          results.push functionArray.FIND_ALL
+      when TYPES.FIND_MANY
+        results.push functionArray.FIND_MANY
       when TYPES.FIND
         results.push functionArray.FIND
       else
@@ -127,7 +127,9 @@
               ret
             )
             results = payload
-          when TYPES.FIND_ALL
+            
+          
+          when TYPES.FIND_ALL, TYPES.FIND_MANY, TYPES.FIND_QUERY
             payload = {}
             rows = results[0]
             i = 0
@@ -154,9 +156,19 @@
           action: data.action
           type: data.type
           data: results
+          
         console.log "RESPONSE::", response
         socket.emit "ember-data", response
-        socket.broadcast.emit "update", response
-    
+        
+        switch response.action
+          when "DELETE"
+            socket.broadcast.emit "delete", response
+            break
+          when "CREATE"
+            socket.broadcast.emit "create", response
+            break
+          when "UPDATE"
+            socket.broadcast.emit "update", response
+            break
 
 )()

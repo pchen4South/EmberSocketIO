@@ -8,7 +8,10 @@ App.Box = DS.Model.extend({
   width: DS.attr('number'),
   left: DS.attr('number'),
   top: DS.attr('number'),
-  text: DS.attr('string')
+  text: DS.attr('string'),
+  selected: DS.attr('boolean')
+}, {
+  defaultValue: false
 });
 
 App.Router.map(function() {
@@ -20,8 +23,8 @@ App.Router.map(function() {
 });
 
 App.IndexRoute = Em.Route.extend({
-  renderTemplate: function() {
-    return this.render('box');
+  redirect: function() {
+    return this.replaceWith('boxs');
   }
 });
 
@@ -36,7 +39,34 @@ App.BoxsRoute = Em.Route.extend({
 });
 
 App.BoxsController = Em.ArrayController.extend({
-  content: []
+  content: [],
+  selBox: null,
+  addBox: function() {
+    var newBox;
+    newBox = App.Box.createRecord({
+      text: 'newBox',
+      height: 200,
+      width: 200
+    });
+    return newBox.save();
+  },
+  selectBox: function(box) {
+    var obj, _i, _len, _ref;
+    _ref = this.get('content').toArray();
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      obj = _ref[_i];
+      obj.set('selected', false);
+    }
+    box.set('selected', true);
+    return this.set('selBox', box);
+  },
+  delBox: function(box) {
+    box.deleteRecord();
+    return box.save();
+  },
+  saveText: function() {
+    return App.store.commit();
+  }
 });
 
 App.BoxView = Em.View.extend({
@@ -45,6 +75,15 @@ App.BoxView = Em.View.extend({
   classNames: ['box'],
   classNameBindings: ['selected'],
   attributeBindings: ['style'],
+  controllerBinding: App.BoxController,
+  selected: (function() {
+    return this.get('content.selected');
+  }).property('content.selected'),
+  click: function(event) {
+    console.log(this.get('controller'));
+    window.box = this.get('content');
+    return this.get('controller').selectBox(this.get('content'));
+  },
   style: (function() {
     var height, heightString, left, leftString, top, topString, width, widthString;
     height = this.get('content.height');
@@ -104,6 +143,12 @@ DS.SocketAdapter = DS.RESTAdapter.extend({
     if (request.id !== void 0) {
       data.id = request.id;
     }
+    if (request.query !== void 0) {
+      data.query = request.query;
+    }
+    if (request.ids !== void 0) {
+      data.ids = request.ids;
+    }
     return this.socket.emit("ember-data", data);
   },
   find: function(store, type, id) {
@@ -116,10 +161,16 @@ DS.SocketAdapter = DS.RESTAdapter.extend({
         return Ember.run(req.context, function() {
           return this.didFindRecord(req.store, req.type, res, req.id);
         });
+      },
+      broadcastCallback: function(req, res) {
+        return console.log('test');
       }
     });
   },
   findMany: function(store, type, ids, query) {
+    console.log("QUERY: ", query);
+    ids = this.serializeIds(ids);
+    console.log("IDS: ", ids);
     return this.send({
       store: store,
       type: type,
@@ -214,18 +265,26 @@ DS.SocketAdapter = DS.RESTAdapter.extend({
     context = this;
     this.set("requests", {});
     ws = io.connect("//" + location.host);
+    window.reqs = this.get('requests');
     ws.on("ember-data", function(payload) {
       var request, uuid;
       console.log("got response from server");
       uuid = payload.uuid;
       request = context.get("requests")[uuid];
-      request.callback(request, payload.data);
-      return context.get("requests")[uuid] = undefined;
+      return request.callback(request, payload.data);
     });
-    ws.on("update", function(serverResponse) {
-      window.sRes = serverResponse;
-      window.data = sRes.data;
-      return console.log('someone else made a change');
+    ws.on("delete", function(payload) {
+      var box, boxId;
+      boxId = payload.data['box'].id;
+      box = App.store.find(App.Box, boxId);
+      return App.store.unloadRecord(box);
+    });
+    ws.on("create", function(payload) {
+      window.pay = payload;
+      return App.store.load(App.Box, payload.data[payload.type]);
+    });
+    ws.on("update", function(payload) {
+      return App.store.load(App.Box, payload.data[payload.type]);
     });
     ws.on("disconnect", function() {});
     return this.set("socket", ws);

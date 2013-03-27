@@ -6,7 +6,7 @@ App.Box = DS.Model.extend
   left:   DS.attr 'number'
   top:    DS.attr 'number'
   text:   DS.attr 'string'
-  # uuid:   DS.attr 'number'
+  selected: DS.attr 'boolean', {defaultValue: false}
   
 #router
 App.Router.map () ->
@@ -15,8 +15,8 @@ App.Router.map () ->
       path: ':box_id'
     
 App.IndexRoute = Em.Route.extend
-  renderTemplate: ->
-    @render('box')
+  redirect: ->
+    @replaceWith('boxs')
 
 App.BoxsRoute = Em.Route.extend    
   model: ->
@@ -27,6 +27,25 @@ App.BoxsRoute = Em.Route.extend
     
 App.BoxsController = Em.ArrayController.extend
   content: []
+  selBox: null
+  addBox: ->
+    newBox = App.Box.createRecord
+      text: 'newBox'
+      height: 200
+      width: 200
+    newBox.save()
+  selectBox: (box) ->
+    for obj in @get('content').toArray()
+      obj.set('selected', false)
+    box.set('selected', true)
+    @set('selBox', box)
+  delBox: (box)->
+    box.deleteRecord()
+    box.save()
+  saveText: ->
+    App.store.commit()
+  
+    
 
 App.BoxView = Em.View.extend
   templateName: 'box'
@@ -34,6 +53,14 @@ App.BoxView = Em.View.extend
   classNames: ['box']
   classNameBindings: ['selected']
   attributeBindings: ['style']
+  controllerBinding: App.BoxController
+  selected: (->
+    return @get('content.selected')
+  ).property('content.selected')
+  click: (event)->
+    console.log @get('controller')
+    window.box = @get('content')
+    @get('controller').selectBox(@get('content'))
   style: (->
        height = @get('content.height')
        width = @get('content.width')
@@ -44,26 +71,7 @@ App.BoxView = Em.View.extend
        topString="top:#{top}px;"
        leftString="left:#{left}px;"
        return heightString + widthString + topString + leftString
-   ).property('content.height', 'content.width', 'content.top', 'content.left').cacheable()
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
+    ).property('content.height', 'content.width', 'content.top', 'content.left').cacheable()
   
   
   
@@ -102,15 +110,13 @@ DS.SocketAdapter = DS.RESTAdapter.extend(
   requests: undefined
   generateUuid: ->
     S4 = ->
-      # 65536
       Math.floor(Math.random() * 0x10000).toString 16
     S4() + S4() 
-    #+ "-" + S4() + "-" + S4() + "-" + S4() + "-" + S4() + S4() + S4()
 
   send: (request) ->
     request.uuid = @generateUuid()
     request.context = this
-    @get("requests")[request.uuid] = request    
+    @get("requests")[request.uuid] = request       
     data =
       uuid: request.uuid
       action: request.requestType
@@ -123,6 +129,13 @@ DS.SocketAdapter = DS.RESTAdapter.extend(
     if request.id isnt undefined
       data.id = request.id
       
+    if request.query isnt undefined
+      data.query = request.query       
+    if request.ids isnt undefined
+      data.ids = request.ids
+      s
+      
+      
     @socket.emit "ember-data", data
 
   find: (store, type, id) ->
@@ -134,12 +147,16 @@ DS.SocketAdapter = DS.RESTAdapter.extend(
       callback: (req, res) ->
         Ember.run req.context, ->
           @didFindRecord req.store, req.type, res, req.id
+      broadcastCallback: (req, res) ->
+        console.log 'test'
 
 
 
   findMany: (store, type, ids, query) ->
+    console.log "QUERY: ", query
+    ids = this.serializeIds(ids);
+    console.log "IDS: ", ids
     
-    # ids = this.serializeIds(ids);
     @send
       store: store
       type: type
@@ -174,6 +191,8 @@ DS.SocketAdapter = DS.RESTAdapter.extend(
       callback: (req, res) ->
         Ember.run req.context, ->
           @didFindAll req.store, req.type, res
+     
+      
 
 
 
@@ -215,8 +234,6 @@ DS.SocketAdapter = DS.RESTAdapter.extend(
         Ember.run req.context, ->
           @didSaveRecord req.store, req.type, req.record
 
-
-
   deleteRecords: (store, type, records) ->
     @_super store, type, records
 
@@ -225,27 +242,35 @@ DS.SocketAdapter = DS.RESTAdapter.extend(
     context = this
     @set "requests", {}
     ws = io.connect("//" + location.host)
-    # For all standard socket.io client events, see https://github.com/LearnBoost/socket.io-client
-    
+    window.reqs = @get 'requests'
     #
     #			* Returned payload has the following key/value pairs:
     #			* {
     #			* 	uuid: [UUID from above],
     #			* 	data: [payload response],
     #			* }
-    #			
+    
     ws.on "ember-data", (payload) ->
       console.log "got response from server"
       uuid = payload.uuid
       request = context.get("requests")[uuid]
       request.callback request, payload.data
       # Cleanup
-      context.get("requests")[uuid] = `undefined`
+      #context.get("requests")[uuid] = `undefined`
     
-    ws.on "update", (serverResponse) ->
-      window.sRes = serverResponse
-      window.data = sRes.data
-      console.log 'someone else made a change'
+    ws.on "delete", (payload) ->
+      boxId = payload.data['box'].id
+      box = App.store.find(App.Box, boxId)
+      App.store.unloadRecord(box)
+
+    ws.on "create", (payload) ->
+      window.pay = payload
+      App.store.load(App.Box, payload.data[payload.type])
+    
+    ws.on "update", (payload) ->
+      App.store.load(App.Box, payload.data[payload.type])
+      
+      
     ws.on "disconnect", ->
 
     @set "socket", ws
@@ -254,12 +279,10 @@ DS.SocketAdapter = DS.RESTAdapter.extend(
 DS.SocketAdapter.map 'App.Box',
   box: { key: 'boxs' }
 
-
 # Create ember-data datastore and define our adapter
 App.store = DS.Store.create
   revision: 11
   adapter: DS.SocketAdapter.create()
-
 
 # Convenience method for handling saves of state via the model.
 DS.Model.reopen save: ->

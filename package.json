@@ -1,0 +1,19 @@
+{
+  "name": "EmberSocketIO",
+  "version": "0.0.0",
+  "description": "EmberSocketIO Test Application",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pchen4South/EmberSocketIO"
+  },
+  "author": "Peter Chen",
+  "license": "BSD",
+  "readmeFilename": "README.md",
+  "dependencies": {
+    "socket.io": "~0.9.13"
+  }
+}

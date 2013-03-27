@@ -13,10 +13,17 @@
 
   <script type="text/x-handlebars" data-template-name="box">
     {{view.content.text}}
+    <button {{action delBox view.content}}> Delete </button>
   </script> 
   
   
   <script type="text/x-handlebars" data-template-name="boxs">
+    <button {{action addBox}}> Add Box </button>
+    
+    {{view Em.TextField valueBinding = 'controller.selBox.text' 
+      placeholder = "selected Box text"}}
+      
+    <button {{action saveText}}> Save Text </button>  
     <section id = "mainarea">
       {{#each box in controller}}
         {{view 'App.BoxView' contentBinding = 'box'}}

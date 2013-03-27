@@ -8,3 +8,7 @@
   border: 1px solid black;
   background: blue;
 }
+
+.selected{
+  outline: 2px black dashed;
+}

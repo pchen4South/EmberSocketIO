@@ -30,10 +30,6 @@
     msg = "Express server listening on port " + app.get("port");
     return console.log(msg.bold.cyan);
   });
-  /*
-    Socket.IO server implementation *
-  */
-
   io = require("socket.io").listen(server);
   TYPES = {
     CREATE: "CREATE",
@@ -53,12 +49,6 @@
       return string.charAt(0).toUpperCase() + string.slice(1);
     };
     results = [];
-    /*
-        We extract the functions used in the for loop below
-        into functionArray for optimization purposes.
-        This also makes it pass JSHint
-    */
-
     functionArray = {
       CREATE: function(callback) {
         return models[capitalize(data.type)].create(data.record, function(err, newModel) {
@@ -81,6 +71,9 @@
           _id: data.record.id
         }, callback);
       },
+      FIND_MANY: function(callback) {
+        return console.log("not working yet");
+      },
       FIND_ALL: function(callback) {
         return models[capitalize(data.type)].find({}, callback);
       },
@@ -102,6 +95,9 @@
         break;
       case TYPES.FIND_ALL:
         results.push(functionArray.FIND_ALL);
+        break;
+      case TYPES.FIND_MANY:
+        results.push(functionArray.FIND_MANY);
         break;
       case TYPES.FIND:
         results.push(functionArray.FIND);
@@ -151,6 +147,8 @@
             results = payload;
             break;
           case TYPES.FIND_ALL:
+          case TYPES.FIND_MANY:
+          case TYPES.FIND_QUERY:
             payload = {};
             rows = results[0];
             i = 0;
@@ -186,7 +184,17 @@
         };
         console.log("RESPONSE::", response);
         socket.emit("ember-data", response);
-        return socket.broadcast.emit("update", response);
+        switch (response.action) {
+          case "DELETE":
+            socket.broadcast.emit("delete", response);
+            break;
+          case "CREATE":
+            socket.broadcast.emit("create", response);
+            break;
+          case "UPDATE":
+            socket.broadcast.emit("update", response);
+            break;
+        }
       });
     });
   });
