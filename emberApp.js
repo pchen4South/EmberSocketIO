@@ -148,7 +148,6 @@ DS.SocketAdapter = DS.RESTAdapter.extend({
     }
     if (request.ids !== void 0) {
       data.ids = request.ids;
-      s;
     }
     return this.socket.emit("ember-data", data);
   },
@@ -161,40 +160,6 @@ DS.SocketAdapter = DS.RESTAdapter.extend({
       callback: function(req, res) {
         return Ember.run(req.context, function() {
           return this.didFindRecord(req.store, req.type, res, req.id);
-        });
-      },
-      broadcastCallback: function(req, res) {
-        return console.log('test');
-      }
-    });
-  },
-  findMany: function(store, type, ids, query) {
-    console.log("QUERY: ", query);
-    ids = this.serializeIds(ids);
-    console.log("IDS: ", ids);
-    return this.send({
-      store: store,
-      type: type,
-      ids: ids,
-      query: query,
-      requestType: TYPES.FIND_MANY,
-      callback: function(req, res) {
-        return Ember.run(req.context, function() {
-          return this.didFindMany(req.store, req.type, res);
-        });
-      }
-    });
-  },
-  findQuery: function(store, type, query, recordArray) {
-    return this.send({
-      store: store,
-      type: type,
-      query: query,
-      recordArray: recordArray,
-      requestType: TYPES.FIND_QUERY,
-      callback: function(req, res) {
-        return Ember.run(req.context, function() {
-          return this.didFindQuery(req.store, req.type, res, req.recordArray);
         });
       }
     });
@@ -225,9 +190,6 @@ DS.SocketAdapter = DS.RESTAdapter.extend({
       }
     });
   },
-  createRecords: function(store, type, records) {
-    return this._super(store, type, records);
-  },
   updateRecord: function(store, type, record) {
     return this.send({
       store: store,
@@ -240,9 +202,6 @@ DS.SocketAdapter = DS.RESTAdapter.extend({
         });
       }
     });
-  },
-  updateRecords: function(store, type, records) {
-    return this._super(store, type, records);
   },
   deleteRecord: function(store, type, record) {
     return this.send({
@@ -257,9 +216,6 @@ DS.SocketAdapter = DS.RESTAdapter.extend({
       }
     });
   },
-  deleteRecords: function(store, type, records) {
-    return this._super(store, type, records);
-  },
   init: function() {
     var context, ws;
     this._super();
@@ -269,10 +225,11 @@ DS.SocketAdapter = DS.RESTAdapter.extend({
     window.reqs = this.get('requests');
     ws.on("ember-data", function(payload) {
       var request, uuid;
-      console.log("got response from server");
       uuid = payload.uuid;
       request = context.get("requests")[uuid];
-      return request.callback(request, payload.data);
+      if (payload.data) {
+        return request.callback(request, payload.data);
+      }
     });
     ws.on("delete", function(payload) {
       var box, boxId;

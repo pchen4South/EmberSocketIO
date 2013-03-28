@@ -93,20 +93,8 @@ TYPES =
   FIND_QUERY: "FIND_QUERY"
   FIND_ALL: "FIND_ALL"
 
-DS.SocketAdapter = DS.RESTAdapter.extend(
+DS.SocketAdapter = DS.RESTAdapter.extend
   socket: undefined
-  
-  #
-  #		* A hashmap of individual requests. Key/value pairs of a UUID
-  #		* and a hashmap with the parameters passed in based on the 
-  #		* request type. Includes "requestType" and "callback" in addition.
-  #		* RequestType is simply an enum value from TYPES (Defined below)
-  #		* and callback is a function that takes two parameters: request and response.
-  #		* the `ws.on('ember-data`) method receives a hashmap with two keys: UUID and data.
-  #		* The UUID is used to fetch the original request from this.requests, and that request
-  #		* is passed into the request's callback with the original request as well.
-  #		* Finally, the request payload is removed from the requests hashmap.
-  #		
   requests: undefined
   generateUuid: ->
     S4 = ->
@@ -133,8 +121,6 @@ DS.SocketAdapter = DS.RESTAdapter.extend(
       data.query = request.query       
     if request.ids isnt undefined
       data.ids = request.ids
-      s
-      
       
     @socket.emit "ember-data", data
 
@@ -147,40 +133,6 @@ DS.SocketAdapter = DS.RESTAdapter.extend(
       callback: (req, res) ->
         Ember.run req.context, ->
           @didFindRecord req.store, req.type, res, req.id
-      broadcastCallback: (req, res) ->
-        console.log 'test'
-
-
-
-  findMany: (store, type, ids, query) ->
-    console.log "QUERY: ", query
-    ids = this.serializeIds(ids);
-    console.log "IDS: ", ids
-    
-    @send
-      store: store
-      type: type
-      ids: ids
-      query: query
-      requestType: TYPES.FIND_MANY
-      callback: (req, res) ->
-        Ember.run req.context, ->
-          @didFindMany req.store, req.type, res
-
-
-
-  findQuery: (store, type, query, recordArray) ->
-    @send
-      store: store
-      type: type
-      query: query
-      recordArray: recordArray
-      requestType: TYPES.FIND_QUERY
-      callback: (req, res) ->
-        Ember.run req.context, ->
-          @didFindQuery req.store, req.type, res, req.recordArray
-
-
 
   findAll: (store, type, since) ->
     @send
@@ -191,10 +143,6 @@ DS.SocketAdapter = DS.RESTAdapter.extend(
       callback: (req, res) ->
         Ember.run req.context, ->
           @didFindAll req.store, req.type, res
-     
-      
-
-
 
   createRecord: (store, type, record) ->
     @send
@@ -206,9 +154,6 @@ DS.SocketAdapter = DS.RESTAdapter.extend(
         Ember.run req.context, ->
           @didCreateRecord req.store, req.type, req.record, res
 
-  createRecords: (store, type, records) ->
-    @_super store, type, records
-
   updateRecord: (store, type, record) ->
     @send
       store: store
@@ -219,11 +164,6 @@ DS.SocketAdapter = DS.RESTAdapter.extend(
         Ember.run req.context, ->
           @didSaveRecord req.store, req.type, req.record, res
 
-
-
-  updateRecords: (store, type, records) ->
-    @_super store, type, records
-
   deleteRecord: (store, type, record) ->
     @send
       store: store
@@ -233,9 +173,6 @@ DS.SocketAdapter = DS.RESTAdapter.extend(
       callback: (req, res) ->
         Ember.run req.context, ->
           @didSaveRecord req.store, req.type, req.record
-
-  deleteRecords: (store, type, records) ->
-    @_super store, type, records
 
   init: ->
     @_super()
@@ -251,30 +188,23 @@ DS.SocketAdapter = DS.RESTAdapter.extend(
     #			* }
     
     ws.on "ember-data", (payload) ->
-      console.log "got response from server"
       uuid = payload.uuid
       request = context.get("requests")[uuid]
-      request.callback request, payload.data
+      if payload.data
+        request.callback request, payload.data
       # Cleanup
       #context.get("requests")[uuid] = `undefined`
-    
     ws.on "delete", (payload) ->
       boxId = payload.data['box'].id
       box = App.store.find(App.Box, boxId)
       App.store.unloadRecord(box)
-
     ws.on "create", (payload) ->
       window.pay = payload
       App.store.load(App.Box, payload.data[payload.type])
-    
     ws.on "update", (payload) ->
       App.store.load(App.Box, payload.data[payload.type])
-      
-      
     ws.on "disconnect", ->
-
     @set "socket", ws
-)
 
 DS.SocketAdapter.map 'App.Box',
   box: { key: 'boxs' }
